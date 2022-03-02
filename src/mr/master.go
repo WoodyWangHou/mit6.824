@@ -5,11 +5,13 @@ import "net"
 import "os"
 import "net/rpc"
 import "net/http"
-
+import "./lib/master_objects"
 
 type Master struct {
 	// Your definitions here.
 
+	// number of 
+    workerState WorkerState,
 }
 
 // Your code here -- RPC handlers for the worker to call.
