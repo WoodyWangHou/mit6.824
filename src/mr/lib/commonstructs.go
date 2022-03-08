@@ -24,8 +24,12 @@ const (
 )
 
 type Task struct {
-	state      TaskState
+	taskState      TaskState
 	taskType   TaskType
 	inputFile  File
 	outputFile File
+}
+
+func (this *Task) isIdle() bool {
+	return this.taskState == Idle
 }

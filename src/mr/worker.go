@@ -1,7 +1,7 @@
 package mr
 
 import (
-	"./lib"
+	"houwang/mr/lib"
 	"fmt"
 	"hash/fnv"
 	"log"
@@ -25,15 +25,25 @@ type MrWorker struct {
 
 func (this *MrWorker) runMap() {
   // implement map
+  mapf(this.task.inputFile.fileName, )
 }
 
 func (this *MrWorker) runReduce() {
   // implement reduce
 }
 
-func (this *MrWorker) exec(task lib.Task) {
-	this.task = task
-	switch task.TaskType {
+func (this *MrWorker) setTask(task lib.Task) {
+	if !task.isIdle() {
+		this.task = task
+	}
+}
+
+func (this *MrWorker) exec() {
+	if !this.task.isIdle() {
+		log.Println("Task is already running: ", this.task)
+		return
+	}
+	switch this.task.taskType {
 	case lib.Map:
 		this.runMap()
 	case lib.Reduce:
