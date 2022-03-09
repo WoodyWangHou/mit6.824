@@ -4,35 +4,56 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"errors"
 )
 
-type FileIO struct{}
-
-// The functions returns nil if there is any issue opening / writing file
-func (this *FileIO) ReadFileBuffered(fileLocation string) (*bufio.Reader, *os.File) {
-	file, err := os.Open(fileLocation)
-	if err != nil {
-		log.Println("Failed to open file at: ", fileLocation)
-		return nil, nil
-	}
-	return bufio.NewReader(file), file
+type FileIO struct{
+	file *os.File
+	reader *bufio.Scanner
+	writer *bufio.Writer
 }
 
-func (this *FileIO) WriteFileBuffered(fileLocation string) (*bufio.Writer, *os.File) {
-	file, err := os.OpenFile(fileLocation, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func CreateFileIO(fileLocation string) FileIO {
+	fileIO := FileIO{}
+    file, err := os.OpenFile(fileLocation, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
-		if os.IsNotExist(err) {
-			createdFile, err := os.Create(fileLocation)
-			if err != nil {
-				log.Println("Cannot create file: ", fileLocation, ". With err: ", err.Error())
-				return nil, nil
-			}
-			return bufio.NewWriter(createdFile), file
-		}
+		log.Println("Failed to open the file: ", err.Error())
+		return fileIO
+	}
+	fileIO.file = file
+	fileIO.reader = bufio.NewScanner(file)
+	fileIO.writer = bufio.NewWriter(file)
+	return fileIO
+}
 
-		log.Println("Cannot create or write to file: ", fileLocation)
-		return nil, nil
+// This function return current line and advance the scanner to next token, returns error
+// if it is currently the last token
+func (this *FileIO) ReadLine() (string, error) {
+	if this.reader == nil {
+		return "", errors.New("Failed to read a file, FileIO does not have a reader")
+	}
+	hasMore := this.reader.Scan()
+	text := this.reader.Text()
+	if !hasMore {
+		return "", this.reader.Err()
 	}
 
-	return bufio.NewWriter(file), file
+	return text, nil
+}
+
+func (this *FileIO) AppendString(content string) {
+	if this.writer == nil {
+		log.Println("FileIO does not have a writer, ignore appendString")
+		return
+	}
+
+	writtenLen, err := this.writer.WriteString(content)
+	if writtenLen != len(content) || err != nil {
+		log.Println("Failed to write to the file. Written bytes: ", writtenLen, "; err: ", err.Error())
+	}
+}
+
+func (this *FileIO) Close() {
+	this.writer.Flush()
+	this.file.Close()
 }

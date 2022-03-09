@@ -27,36 +27,20 @@ func teardown() {
 	os.Remove(TestFilePath)
 }
 
-func TestReadBuffered(t *testing.T) {
-	fileio := lib.FileIO{}
-	reader, file := fileio.ReadFileBuffered(TestFilePath)
-	if reader == nil {
-		t.Fatal("Failed to open the file")
+func TestReadLine(t *testing.T) {
+	fileio := lib.CreateFileIO(TestFilePath)
+	defer fileio.Close()
+	line, _ := fileio.ReadLine();
+	if line != TestData {
+		t.Fatal("the reader content: ", line, " - does not matches the test data: ", TestData)
 	}
-	testData, _ := reader.ReadString(byte('\n'))
-	if testData != TestData {
-		t.Fatal("the reader content: ", testData, " - does not matches the test data: ", TestData)
-	}
-	file.Close()
 }
 
-func TestWriteBuffered(t *testing.T) {
-	fileio := lib.FileIO{}
-	writer, file := fileio.WriteFileBuffered(TestFilePath)
-	if writer == nil {
-		t.Fatal("Failed to open the file")
-	}
+func TestWriteLine(t *testing.T) {
+	fileio := lib.CreateFileIO(TestFilePath)
 	additional := " additional" 
-	strSize := len(additional)
-	len, err := writer.WriteString(additional)
-	if err != nil {
-		t.Fatal("Failed to write to file: ", err.Error())
-	}
-	if len != strSize {
-		t.Fatal("The test data is not fully written")
-	}
-	writer.Flush()
-	file.Close()
+	fileio.AppendString(additional)
+	fileio.Close()
     
 	newFile, _ := os.Open(TestFilePath)
 	newData, err := ioutil.ReadAll(newFile)
