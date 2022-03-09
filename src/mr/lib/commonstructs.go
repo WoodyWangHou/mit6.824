@@ -24,7 +24,7 @@ const (
 )
 
 type Task struct {
-	taskState      TaskState
+	taskState  TaskState
 	taskType   TaskType
 	inputFile  File
 	outputFile File

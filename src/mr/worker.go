@@ -25,7 +25,23 @@ type MrWorker struct {
 
 func (this *MrWorker) runMap() {
   // implement map
-  mapf(this.task.inputFile.fileName, )
+  inputFile := this.task.inputFile
+  outputFile := this.task.outputFile
+  fileio := lib.CreateFileIO(inputFile.fileName)
+  content, err := fileio.ReadAll()
+  if err != nil {
+	  log.Fatal("Failed to read the input file: ", inputFile.fileName)
+  }
+
+  // execute mapf
+  intermediate := this.mapf(inputFile.fileName, content)
+
+  // Write intermediate to storage
+  outputFileIO = lib.CreateFileIO(outputFile.fileName)
+  for keyval : intermediate {
+	outStr := fmt.Sprintf("%v %v", keyval.Key, keyval.Value)
+	outputFileIO.AppendString(outStr)
+  }
 }
 
 func (this *MrWorker) runReduce() {
@@ -43,6 +59,7 @@ func (this *MrWorker) exec() {
 		log.Println("Task is already running: ", this.task)
 		return
 	}
+
 	switch this.task.taskType {
 	case lib.Map:
 		this.runMap()

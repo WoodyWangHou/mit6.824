@@ -5,11 +5,13 @@ import (
 	"log"
 	"os"
 	"errors"
+	"bytes"
+	"fmt"
 )
 
 type FileIO struct{
 	file *os.File
-	reader *bufio.Scanner
+	scanner *bufio.Scanner
 	writer *bufio.Writer
 }
 
@@ -21,7 +23,7 @@ func CreateFileIO(fileLocation string) FileIO {
 		return fileIO
 	}
 	fileIO.file = file
-	fileIO.reader = bufio.NewScanner(file)
+	fileIO.scanner = bufio.NewScanner(file)
 	fileIO.writer = bufio.NewWriter(file)
 	return fileIO
 }
@@ -29,16 +31,34 @@ func CreateFileIO(fileLocation string) FileIO {
 // This function return current line and advance the scanner to next token, returns error
 // if it is currently the last token
 func (this *FileIO) ReadLine() (string, error) {
-	if this.reader == nil {
+	if this.scanner == nil {
 		return "", errors.New("Failed to read a file, FileIO does not have a reader")
 	}
-	hasMore := this.reader.Scan()
-	text := this.reader.Text()
+	hasMore := this.scanner.Scan()
+	text := this.scanner.Text()
 	if !hasMore {
-		return "", this.reader.Err()
+		return "", this.scanner.Err()
 	}
 
 	return text, nil
+}
+
+func (this *FileIO) ReadAll() (string, error) {
+	if this.scanner == nil {
+		return "", errors.New("Failed to read a file, FileIO does not have a reader")
+	}
+	var outputBuf bytes.Buffer
+	for this.scanner.Scan() {
+		outputBuf.WriteString(this.scanner.Text())
+	}
+
+	if err := this.scanner.Err(); err != nil {
+		fmt.Println("shouldn't see an error scanning a string: ", err.Error())
+		return "", err
+	}
+    // reset scanner
+	this.scanner = bufio.NewScanner(this.file)
+	return outputBuf.String(), nil
 }
 
 func (this *FileIO) AppendString(content string) {
