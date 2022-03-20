@@ -1,11 +1,5 @@
 package lib
 
-type File struct {
-	fileName string
-	startKey string
-	size     int64
-}
-
 // Define the TaskState of a worker
 type TaskState int64
 
@@ -24,27 +18,27 @@ const (
 )
 
 type Task struct {
-	taskState  TaskState
-	taskType   TaskType
-	mapTask MapTask
-	reduceTask ReduceTask
+	TaskState  TaskState
+	TaskType   TaskType
+	MapTask MapTask
+	ReduceTask ReduceTask
 }
 
-func (this *Task) isIdle() bool {
-	return this.taskState == Idle
+func (this *Task) IsIdle() bool {
+	return this.TaskState == Idle
 }
 
 // Map Task
 type MapTask struct {
-	inputFile  File
-	outputFiles []File
+	InputFile  string
+	OutputFiles []string
 }
 
 // Reduce Task
 type ReduceTask struct {
 	// In real MR, reduce needs to be informed of all map tasks' file, here they are smashed into one
-	inputFile File
-	outputFile File
+	InputFile string
+	OutputFile string
 }
 
 // file name

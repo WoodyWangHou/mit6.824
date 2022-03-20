@@ -68,8 +68,8 @@ func (this *FileIO) AppendString(content string) {
 		log.Println("FileIO does not have a writer, ignore appendString")
 		return
 	}
-    mu := this.writerLock.Lock()
-	defer mu.Unlock()
+    this.writerLock.Lock()
+	defer this.writerLock.Unlock()
 
 	writtenLen, err := this.writer.WriteString(content)
 	if writtenLen != len(content) || err != nil {

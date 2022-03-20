@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 	"math/rand"
+	"errors"
 )
 
 //
@@ -42,22 +43,22 @@ func getPartitionNumber(key string, reduceN int) int {
 
 func (this *MrWorker) runMap() {
   // implement map
-  inputFile := this.task.mapTask.inputFile
-  inputFileio := lib.CreateFileIO(inputFile.fileName)
+  inputFile := this.task.MapTask.InputFile
+  inputFileio := lib.CreateFileIO(inputFile)
   content, err := inputFileio.ReadAll()
   if err != nil {
-	  log.Fatal("Failed to read the input file: ", inputFile.fileName)
+	  log.Fatal("Failed to read the input file: ", inputFile)
   }
 
   // execute mapf
-  intermediateKV := this.mapf(inputFile.fileName, content)
+  intermediateKV := this.mapf(inputFile, content)
 
   // Write intermediateKV to storage
-  outputFiles := this.task.mapTask.outputFiles
+  outputFiles := this.task.MapTask.OutputFiles
   reduceN := len(outputFiles)
-  for keyval : intermediateKV {
+  for _, keyval := range intermediateKV {
 	outputFileName := outputFiles[getPartitionNumber(keyval.Key, reduceN)]
-	outputFileIO = lib.CreateFileIO(outputFileName)
+	outputFileIO := lib.CreateFileIO(outputFileName)
 	outStr := fmt.Sprintf("%v %v", keyval.Key, keyval.Value)
 	outputFileIO.AppendString(outStr)
   }
@@ -65,23 +66,27 @@ func (this *MrWorker) runMap() {
 
 func (this *MrWorker) runReduce() {
   // implement reduce
-  inputFile := this.task.reduceTask.inputFile
-  fileio := lib.CreateFileIO(inputFile.fileName)
+  inputFile := this.task.ReduceTask.InputFile
+  fileio := lib.CreateFileIO(inputFile)
 
   var intermediate []KeyValue
   // read key-vals into mem
-  for line, err := fileio.ReadLine(); err != nil {
-	  keyVal := KeyValue{}
-	  fmt.Sscanf(line, "%v %v", &keyVal)
-	  append(intermediate, keyVal)
+  var err error
+  for err != nil {
+	  line, err := fileio.ReadLine(); 
+	  if err != nil {
+		var keyVal KeyValue
+		fmt.Sscanf(line, "%v %v", &keyVal)
+		intermediate = append(intermediate, keyVal)
+	  }
   }
 
   // sort
   sort.Sort(ByKey(intermediate))
 
   // run reducef
-  outputFile := this.task.reduceTask.outputFile
-  outputFileIO := fileio.CreateFileIO(outputFile.fileName)
+  outputFile := this.task.ReduceTask.OutputFile
+  outputFileIO := lib.CreateFileIO(outputFile)
   i := 0
 	for i < len(intermediate) {
 		j := i + 1
@@ -92,7 +97,7 @@ func (this *MrWorker) runReduce() {
 		for k := i; k < j; k++ {
 			values = append(values, intermediate[k].Value)
 		}
-		output := reducef(intermediate[i].Key, values)
+		output := this.reducef(intermediate[i].Key, values)
 
 		// this is the correct format for each line of Reduce output.
 		outputFileIO.AppendString(fmt.Sprintf("%v %v\n", intermediate[i].Key, output))
@@ -102,29 +107,29 @@ func (this *MrWorker) runReduce() {
   
 }
 
-func (this *MrWorker) ExecTask(task lib.Task) {
-	if !this.task.isIdle() {
+func (this *MrWorker) ExecTask(task lib.Task) error {
+	if !task.IsIdle() {
 		log.Println("Task is already running: ", this.task)
-		return
+		return errors.New("Task is already running or completed, abort the execution")
 	}
 	this.task = task
-	this.task.taskState = lib.TaskState.InProgress
+	this.task.TaskState = lib.InProgress
 
-	switch this.task.taskType {
+	switch this.task.TaskType {
 	case lib.Map:
 		this.runMap()
 	case lib.Reduce:
 		this.runReduce()
 	}
-	this.task.taskState = lib.TaskState.Completed
-	return
+	this.task.TaskState = lib.Completed
+	return nil
 }
 
 func (this *MrWorker) GetTaskState() lib.TaskState {
-	return this.task.taskState
+	return this.task.TaskState
 }
 
-func createMrWorker(mapf func(string, string) []KeyValue,
+func CreateMrWorker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) *MrWorker {
 	mrWorker := new(MrWorker)
 	mrWorker.mapf = mapf
@@ -147,7 +152,7 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
-	mrWorker := createMrWorker(mapf, reducef)
+	mrWorker := CreateMrWorker(mapf, reducef)
 	
 	// Worker join the job, query master for a task
 	for {
@@ -155,19 +160,18 @@ func Worker(mapf func(string, string) []KeyValue,
 		succeed := call("Master.AssignTask", nil, &assignTaskResp)
 		
 		if succeed {
-			mrWorker.ExecTask(assignTaskResp.task)
+			mrWorker.ExecTask(assignTaskResp.Task)
 			// report finished
 			var taskStateRequest UpdateTaskStateRequest
-			taskStateRequest.taskState = mrWorker.GetTaskState()
+			taskStateRequest.TaskState = mrWorker.GetTaskState()
 			call("Master.UpdateTaskState", nil, &taskStateRequest)
 		}
 
 		rand.Seed(time.Now().UnixNano())
 		sleepTime := rand.Intn(4)
 		time.Sleep(time.Duration(sleepTime)*time.Second)
-	}
-    
-	
+	}    
+}
 
 //
 // send an RPC request to the master, wait for the response.

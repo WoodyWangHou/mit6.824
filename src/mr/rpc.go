@@ -16,11 +16,11 @@ import "houwang/mr/lib"
 //
 
 type AssignTaskResponse struct {
-	task lib.Task
+	Task lib.Task
 }
 
 type UpdateTaskStateRequest struct {
-	taskState lib.TaskState
+	TaskState lib.TaskState
 }
 
 // Add your RPC definitions here.
