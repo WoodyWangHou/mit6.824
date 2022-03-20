@@ -26,10 +26,27 @@ const (
 type Task struct {
 	taskState  TaskState
 	taskType   TaskType
-	inputFile  File
-	outputFile File
+	mapTask MapTask
+	reduceTask ReduceTask
 }
 
 func (this *Task) isIdle() bool {
 	return this.taskState == Idle
 }
+
+// Map Task
+type MapTask struct {
+	inputFile  File
+	outputFiles []File
+}
+
+// Reduce Task
+type ReduceTask struct {
+	// In real MR, reduce needs to be informed of all map tasks' file, here they are smashed into one
+	inputFile File
+	outputFile File
+}
+
+// file name
+const IntermediateFileNamePrefix = "mr-mapped-"
+

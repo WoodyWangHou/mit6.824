@@ -8,18 +8,19 @@ package mr
 
 import "os"
 import "strconv"
+import "houwang/mr/lib"
 
 //
 // example to show how to declare the arguments
 // and reply for an RPC.
 //
 
-type ExampleArgs struct {
-	X int
+type AssignTaskResponse struct {
+	task lib.Task
 }
 
-type ExampleReply struct {
-	Y int
+type UpdateTaskStateRequest struct {
+	taskState lib.TaskState
 }
 
 // Add your RPC definitions here.
