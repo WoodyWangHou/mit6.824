@@ -1,18 +1,55 @@
 package mr
 
 import (
+	"houwang/lib"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
 	"os"
+	"sync"
 )
 
-type Master struct {
-	// Your definitions here.
+type TaskStore struct {
+	mapTasks []lib.Task
+	reduceTasks []lib.Task
+	tasksByState map[lib.TaskState][]*lib.Task
+	lock sync.Mutex
 }
 
-// Your code here -- RPC handlers for the worker to call.
+func (this *TaskStore) AddMapTask(task lib.Task) {
+	lock.Lock()
+	defer lock.Unlock()
+	this.mapTasks = append(this.mapTasks, task)
+}
+
+func (this *TaskStore) AddReduceTask(task lib.Task) {
+	lock.Lock()
+	defer lock.Unlock()
+	this.reduceTasks = append(this.reduceTasks, task)
+}
+
+func (this *TaskStore) PopIdleTask() lib.Task{
+	lock.Lock()
+	defer lock.Unlock()
+	if len(this.tasksByState) == 0 {
+		return lib.Task{}
+	}
+	task := this.tasksByState[lib.Idle][0]
+	this.tasksByState[lib.Idle][1:]
+	return *task
+}
+
+func (this *TaskStore) AreTasksDone() {
+	lock.Lock()
+	defer lock.Unlock()
+	return len(this.tasksByState[lib.Idle]) == 0 && len(this.tasksByState[lib.InProgress]) ==0
+}
+
+type Master struct {
+	jobConfig lib.JobConfig
+	taskStore TaskStore
+}
 
 //
 // start a thread that listens for RPCs from worker.go
@@ -32,14 +69,19 @@ func (m *Master) server() {
 
 //
 // main/mrmaster.go calls Done() periodically to find out
-// if the entire job has finished.
+// if the entire job has finished. This is the heartbeats
 //
-func (m *Master) Done() bool {
-	ret := false
+func (this *Master) Done() bool {
+	return this.taskStore.AreTasksDone()
+}
 
-	// Your code here.
+/**
+* RPC Handles
+ */
 
-	return ret
+// Try to assign an idle task to worker,
+func AssignTask() AssignTaskResponse {
+
 }
 
 //
@@ -51,6 +93,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 
 	// Your code here.
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	m.server()
 	return &m

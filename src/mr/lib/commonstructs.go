@@ -30,6 +30,7 @@ func (this *Task) IsIdle() bool {
 
 // Map Task
 type MapTask struct {
+	SplitNumber int // The split this task reads in
 	InputFile  string
 	OutputFiles []string
 }
@@ -37,6 +38,7 @@ type MapTask struct {
 // Reduce Task
 type ReduceTask struct {
 	// In real MR, reduce needs to be informed of all map tasks' file, here they are smashed into one
+	Partition int // partition number this reduce task reads in
 	InputFile string
 	OutputFile string
 }

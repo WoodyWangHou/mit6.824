@@ -9,6 +9,7 @@ import (
 	"strings"
 	"strconv"
 	"bufio"
+	"log"
 )
 
 const WorkerTestFilePath string = "/tmp/worker_test_file"
@@ -36,6 +37,7 @@ func Reduce(key string, values []string) string {
 }
 
 func WorkerTestMain(m *testing.M) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	WorkerSetup()
 	code := m.Run()
 	WorkerTeardown()

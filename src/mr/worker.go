@@ -34,6 +34,7 @@ type MrWorker struct {
 	task    lib.Task
 	mapf    func(string, string) []KeyValue
 	reducef func(string, []string) string
+	id string
 }
 
 func getPartitionNumber(key string, reduceN int) int {
@@ -47,6 +48,7 @@ func (this *MrWorker) runMap() {
   inputFileio := lib.CreateFileIO(inputFile)
   content, err := inputFileio.ReadAll()
   if err != nil {
+	  log.SetFlags(log.LstdFlags | log.Lshortfile)
 	  log.Fatal("Failed to read the input file: ", inputFile)
   }
 
@@ -152,6 +154,7 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	mrWorker := CreateMrWorker(mapf, reducef)
 	
 	// Worker join the job, query master for a task

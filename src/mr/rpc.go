@@ -15,6 +15,9 @@ import "houwang/mr/lib"
 // and reply for an RPC.
 //
 
+type AssignTaskRequest struct {
+}
+
 type AssignTaskResponse struct {
 	Task lib.Task
 }
@@ -24,7 +27,6 @@ type UpdateTaskStateRequest struct {
 }
 
 // Add your RPC definitions here.
-
 
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the master.
