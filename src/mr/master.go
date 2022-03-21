@@ -11,39 +11,62 @@ import (
 )
 
 type TaskStore struct {
-	mapTasks []lib.Task
-	reduceTasks []lib.Task
-	tasksByState map[lib.TaskState][]*lib.Task
-	lock sync.Mutex
+	mapTasksByState    map[lib.TaskState][]lib.Task
+	reduceTasksByState map[lib.TaskState][]lib.Task
+	mapLock            sync.Mutex
+	reduceLock         sync.Mutex
 }
 
 func (this *TaskStore) AddMapTask(task lib.Task) {
-	lock.Lock()
-	defer lock.Unlock()
-	this.mapTasks = append(this.mapTasks, task)
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	mapTasksByState[task.TaskState] = append(mapTasksByState[task.TaskState], task)
 }
 
 func (this *TaskStore) AddReduceTask(task lib.Task) {
-	lock.Lock()
-	defer lock.Unlock()
-	this.reduceTasks = append(this.reduceTasks, task)
+	reduceLock.Lock()
+	defer reduceLock.Unlock()
+	reduceTasksByState[task.TaskState] = append(reduceTasksByState[task.TaskState], task)
 }
 
-func (this *TaskStore) PopIdleTask() lib.Task{
-	lock.Lock()
-	defer lock.Unlock()
-	if len(this.tasksByState) == 0 {
-		return lib.Task{}
+func (this *TaskStore) PopIdleMapTask() lib.Task {
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	if len(this.mapTasksByState) == 0 {
+		return nil
 	}
-	task := this.tasksByState[lib.Idle][0]
-	this.tasksByState[lib.Idle][1:]
-	return *task
+	task := this.mapTasksByState[lib.Idle][0]
+	this.mapTasksByState[lib.Idle][1:]
+	return task
 }
 
-func (this *TaskStore) AreTasksDone() {
-	lock.Lock()
-	defer lock.Unlock()
-	return len(this.tasksByState[lib.Idle]) == 0 && len(this.tasksByState[lib.InProgress]) ==0
+func (this *TaskStore) PopIdleReduceTask() lib.Task {
+	reduceLock.Lock()
+	defer reduceLock.Unlock()
+	if len(this.reduceTasksByState) == 0 {
+		return nil
+	}
+	task := this.reduceTasksByState[lib.Idle][0]
+	this.reduceTasksByState[lib.Idle][1:]
+	return task
+}
+
+func (this *TaskStore) HasMapTask() bool {
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	return len(this.mapTasksByState[lib.Idle]) != 0 
+		|| len(this.mapTasksByState[lib.InProgress]) != 0
+}
+
+func (this *TaskStore) HasReduceTask() bool {
+	reduceLock.Lock()
+	defer reduceLock.Unlock()
+	return len(this.reduceTasksByState[lib.Idle]) != 0 
+		|| len(this.reduceTasksByState[lib.InProgress]) != 0 
+}
+
+func (this *TaskStore) AreTasksDone() bool {
+	return !this.HasMapTask() && !this.HasReduceTask()
 }
 
 type Master struct {
@@ -80,8 +103,33 @@ func (this *Master) Done() bool {
  */
 
 // Try to assign an idle task to worker,
-func AssignTask() AssignTaskResponse {
+func (this *Master) AssignTask() AssignTaskResponse {
+	response := AssignTaskResponse{}
+	if this.taskstore.HasMapTask() {
+		task := this.taskStore.PopIdleMapTask()
+		if task != nil {
+			response.Task = task
+		}
+		return response;
+	}
 
+	if this.hasReduceTask() {
+		task := this.taskStore.PopIdleReduceTask()
+		if task != nil {
+			response.Task = task
+		}
+		return response;
+	}
+
+	return response
+}
+
+// init the job
+func (this *Master) initialize(files []string, nReduce int) {
+	this.jobConfig = lib.JobConfig{}
+	// create Map Tasks
+
+	// create Reduce Tasks
 }
 
 //
@@ -93,7 +141,7 @@ func MakeMaster(files []string, nReduce int) *Master {
 	m := Master{}
 
 	// Your code here.
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	m.initialize(files, nReduce)
 
 	m.server()
 	return &m
